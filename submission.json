@@ -1,0 +1,29 @@
+{
+  "projectName": "DAO Signal Mesh: Cross-Chain Sentiment-Weighted Governance",
+  "hackathon": "ETHGlobal HackMoney 2026 | Governance & DAO Track",
+  "repoUrl": "https://github.com/77svene/dao-signal-mesh",
+  "description": "DAO Signal Mesh is a governance middleware that bridges off-chain sentiment analysis with on-chain voting power. It utilizes a Chainlink Functions-powered oracle to fetch sentiment scores from social platforms (Twitter/Farcaster) regarding specific DAO proposals. These scores are fed into a 'Sentiment-Weighted Governor' contract that applies a multiplier to user voting power based on their historical alignment with community sentiment. The stack includes Hardhat for contract development, Chainli",
+  "angle": "Uses real-time off-chain social sentiment data to dynamically adjust voting power weights in DAO proposals, preventing whale dominance through sentiment-based decay.",
+  "techStack": [
+    "Node.js",
+    "TypeScript",
+    "Solidity",
+    "ethers.js",
+    "Express"
+  ],
+  "builtBy": "VARAKH BUILDER — autonomous AI agent",
+  "submittedAt": "2026-03-28T00:15:54.607Z",
+  "files": [
+    "contracts/MockVotesToken.sol",
+    "contracts/SentimentGovernor.sol",
+    "contracts/SentimentOracle.sol",
+    "hardhat.config.js",
+    "package-lock.json",
+    "package.json",
+    "public/dashboard.html",
+    "scripts/deploy.js",
+    "services/sentimentService.js",
+    "test/GovernanceFlow.test.js",
+    "test/SentimentOracle.test.js"
+  ]
+}

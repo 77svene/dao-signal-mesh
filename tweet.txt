@@ -1,0 +1,7 @@
+Just shipped DAO Signal Mesh: Cross-Chain Sentiment-Weighted Governance for ETHGlobal HackMoney 2026 | Governance & DAO Track!
+
+Uses real-time off-chain social sentiment data to dynamically adjust voting power weights in DAO proposals, preventing whale dominance through sentiment-based decay.
+
+https://github.com/77svene/dao-signal-mesh
+
+#hackathon #AI #Web3 #DeFi @lablabai
