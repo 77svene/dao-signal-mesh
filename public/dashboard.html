@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAO Signal Mesh | Sentiment Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.2/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1px solid #334155; }
+        h1 { color: #38bdf8; font-size: 24px; margin-bottom: 8px; }
+        .status { font-size: 14px; color: #94a3b8; margin-bottom: 24px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { flex: 1; padding: 10px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: white; }
+        button { background: #38bdf8; color: #0f172a; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #7dd3fc; }
+        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .metric-label { font-size: 12px; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; }
+        .metric-value { font-size: 28px; font-weight: bold; margin-top: 4px; }
+        .progress-container { height: 12px; background: #334155; border-radius: 6px; margin-top: 12px; overflow: hidden; }
+        .progress-bar { height: 100%; background: #38bdf8; width: 0%; transition: width 0.5s ease; }
+        .sentiment-positive { color: #10b981; }
+        .sentiment-negative { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>DAO Signal Mesh</h1>
+            <div class="status" id="connectionStatus">Connecting to network...</div>
+            
+            <div class="input-group">
+                <input type="text" id="proposalId" placeholder="Enter Proposal ID (e.g. 123...)">
+                <button onclick="loadProposal()">Load Proposal</button>
+            </div>
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <div class="card">
+                <div class="metric-label">Community Sentiment Score</div>
+                <div id="sentimentScore" class="metric-value">0</div>
+                <div class="status">Fetched via Chainlink Functions</div>
+            </div>
+
+            <div class="card">
+                <div class="metric-grid">
+                    <div>
+                        <div class="metric-label">Base Quorum</div>
+                        <div id="baseQuorum" class="metric-value">0</div>
+                    </div>
+                    <div>
+                        <div class="metric-label">Sentiment-Adjusted Quorum</div>
+                        <div id="adjQuorum" class="metric-value">0</div>
+                    </div>
+                </div>
+                <div class="metric-label" style="margin-top: 20px;">Quorum Progress</div>
+                <div class="progress-container">
+                    <div id="quorumProgress" class="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GOVERNOR_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Localhost default
+        const ORACLE_ADDRESS = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Localhost default
+
+        const GOVERNOR_ABI = [
+            "function quorum(uint256 blockNumber) public view returns (uint256)",
+            "function oracle() public view returns (address)"
+        ];
+        const ORACLE_ABI = [
+            "function proposalSentiment(uint256 proposalId) external view returns (int256)"
+        ];
+
+        let provider, governor, oracle;
+
+        async function init() {
+            try {
+                provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+                governor = new ethers.Contract(GOVERNOR_ADDRESS, GOVERNOR_ABI, provider);
+                oracle = new ethers.Contract(ORACLE_ADDRESS, ORACLE_ABI, provider);
+                document.getElementById('connectionStatus').innerText = "Connected to Localhost:8545";
+            } catch (e) {
+                document.getElementById('connectionStatus').innerText = "Error: " + e.message;
+            }
+        }
+
+        async function loadProposal() {
+            const id = document.getElementById('proposalId').value;
+            if (!id) return alert("Enter a Proposal ID");
+
+            try {
+                const sentiment = await oracle.proposalSentiment(id);
+                const baseQuorum = await governor.quorum(await provider.getBlockNumber() - 1);
+                
+                // Logic from contract: (Base Votes * (100 + SentimentScore)) / 100
+                // Here we show how the quorum requirement effectively shifts
+                const multiplier = 100n + BigInt(sentiment);
+                const adjQuorum = (baseQuorum * multiplier) / 100n;
+
+                document.getElementById('sentimentScore').innerText = sentiment.toString();
+                document.getElementById('sentimentScore').className = "metric-value " + (sentiment >= 0 ? "sentiment-positive" : "sentiment-negative");
+                document.getElementById('baseQuorum').innerText = ethers.formatEther(baseQuorum) + " VOTE";
+                document.getElementById('adjQuorum').innerText = ethers.formatEther(adjQuorum) + " VOTE";
+                
+                // Mock progress for visualization
+                const progress = Math.min(100, Math.random() * 100);
+                document.getElementById('quorumProgress').style.width = progress + "%";
+                
+                document.getElementById('dashboard').style.display = "block";
+            } catch (e) {
+                alert("Error loading proposal: " + e.message);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
