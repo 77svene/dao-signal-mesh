@@ -26,7 +26,7 @@ contract SentimentGovernor is
 
     constructor(IVotes _token, address _oracle)
         Governor("SentimentGovernor")
-        GovernorSettings(1, 50400, 0) // 1 block delay, 1 week period
+        GovernorSettings(1, 50400, 0) // 1 block delay, 1 week period, 0 threshold
         GovernorVotes(_token)
         GovernorVotesQuorumFraction(4) // 4% quorum
     {
@@ -38,7 +38,7 @@ contract SentimentGovernor is
      * @dev Overrides _getVotes to multiply base voting power by sentiment score.
      * Multiplier logic: (Base Votes * (100 + SentimentScore)) / 100
      * SentimentScore is expected to be in range [-100, 100].
-     * If sentiment is -50, voting power is halved. If +50, it's 1.5x.
+     * We use the proposalId passed in params or fallback to base votes if not provided.
      */
     function _getVotes(
         address account,
@@ -47,22 +47,21 @@ contract SentimentGovernor is
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
         uint256 baseVotes = super._getVotes(account, timepoint, params);
         
-        // If no params or invalid length, return base votes
         if (params.length < 32) {
             return baseVotes;
         }
 
         uint256 proposalId = abi.decode(params, (uint256));
         int256 sentiment = ISentimentOracle(oracle).proposalSentiment(proposalId);
-
-        // Apply sentiment multiplier: (baseVotes * (100 + sentiment)) / 100
-        // We use 100 as the base to handle percentage-based adjustment
-        int256 adjustedVotes = (int256(baseVotes) * (100 + sentiment)) / 100;
         
-        return adjustedVotes > 0 ? uint256(adjustedVotes) : 0;
+        // Apply multiplier: (100 + sentiment)% 
+        // If sentiment is -100, votes = 0. If sentiment is 100, votes = 2x.
+        int256 weightedVotes = (int256(baseVotes) * (100 + sentiment)) / 100;
+        
+        return weightedVotes > 0 ? uint256(weightedVotes) : 0;
     }
 
-    // Required overrides by Solidity
+    // Required Overrides by OpenZeppelin Governor Modules
 
     function votingDelay() public view override(Governor, GovernorSettings) returns (uint256) {
         return super.votingDelay();
@@ -72,11 +71,11 @@ contract SentimentGovernor is
         return super.votingPeriod();
     }
 
-    function quorum(uint256 timepoint) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256) {
-        return super.quorum(timepoint);
+    function quorum(uint256 blockNumber) public view override(Governor, GovernorVotesQuorumFraction) returns (uint256) {
+        return super.quorum(blockNumber);
     }
 
-    function state(uint256 proposalId) public view override(Governor, GovernorSettings) returns (ProposalState) {
+    function state(uint256 proposalId) public view override(Governor) returns (ProposalState) {
         return super.state(proposalId);
     }
 
@@ -94,14 +93,8 @@ contract SentimentGovernor is
         return super._propose(targets, values, calldatas, description, proposer);
     }
 
-    function _execute(
-        uint256 proposalId,
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        bytes32 descriptionHash
-    ) internal override(Governor) {
-        super._execute(proposalId, targets, values, calldatas, descriptionHash);
+    function _executor() internal view override(Governor) returns (address) {
+        return super._executor();
     }
 
     function _cancel(
@@ -111,9 +104,5 @@ contract SentimentGovernor is
         bytes32 descriptionHash
     ) internal override(Governor) returns (uint256) {
         return super._cancel(targets, values, calldatas, descriptionHash);
-    }
-
-    function _executor() internal view override(Governor) returns (address) {
-        return super._executor();
     }
 }
